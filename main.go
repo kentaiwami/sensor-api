@@ -16,6 +16,17 @@ type Reading struct {
 }
 
 var db *sql.DB
+var apiKey string
+
+func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-API-Key") != apiKey {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next(w, r)
+	}
+}
 
 func postReading(table string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -61,9 +72,14 @@ func main() {
 		log.Fatal("cannot connect to db:", err)
 	}
 
-	http.HandleFunc("/temperature", postReading("temperatures"))
-	http.HandleFunc("/humidity", postReading("humidities"))
-	http.HandleFunc("/co2", postReading("co2s"))
+	apiKey = os.Getenv("API_KEY")
+	if apiKey == "" {
+		log.Fatal("API_KEY is required")
+	}
+
+	http.HandleFunc("/temperature", authMiddleware(postReading("temperatures")))
+	http.HandleFunc("/humidity", authMiddleware(postReading("humidities")))
+	http.HandleFunc("/co2", authMiddleware(postReading("co2s")))
 	log.Println("listening on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

@@ -31,3 +31,8 @@ spec:
                 secretKeyRef:
                   name: sensor-api-secret
                   key: database-url
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sensor-api-secret
+                  key: api-key
