@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sensor-api
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sensor-api
+  template:
+    metadata:
+      labels:
+        app: sensor-api
+    spec:
+      containers:
+        - name: sensor-api
+          image: __REGISTRY_HOST__:5000/sensor-api:__IMAGE_TAG__
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sensor-api-secret
+                  key: database-url
