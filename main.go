@@ -77,6 +77,9 @@ func main() {
 		log.Fatal("API_KEY is required")
 	}
 
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 	http.HandleFunc("/temperature", authMiddleware(postReading("temperatures")))
 	http.HandleFunc("/humidity", authMiddleware(postReading("humidities")))
 	http.HandleFunc("/co2", authMiddleware(postReading("co2s")))
