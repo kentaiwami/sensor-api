@@ -12,7 +12,8 @@ import (
 )
 
 type Reading struct {
-	Value *float64 `json:"value"`
+	Value    *float64 `json:"value"`
+	SensorID string   `json:"sensor_id"`
 }
 
 var db *sql.DB
@@ -43,7 +44,11 @@ func postReading(table string) http.HandlerFunc {
 			http.Error(w, "value is required", http.StatusBadRequest)
 			return
 		}
-		_, err := db.Exec("INSERT INTO "+table+" (value) VALUES (?)", data.Value)
+		if data.SensorID == "" {
+			http.Error(w, "sensor_id is required", http.StatusBadRequest)
+			return
+		}
+		_, err := db.Exec("INSERT INTO "+table+" (sensor_id, value) VALUES (?, ?)", data.SensorID, data.Value)
 		if err != nil {
 			log.Printf("db insert error: %v", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
