@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: sensor-api
-  namespace: default
+  namespace: sensor-api
 spec:
   type: NodePort
   selector:

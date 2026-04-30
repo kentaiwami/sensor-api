@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sensor-api
-  namespace: default
+  namespace: sensor-api
 spec:
   replicas: 2
   selector:

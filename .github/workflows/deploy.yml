@@ -28,6 +28,6 @@ jobs:
         run: |
           sed -e "s|__REGISTRY_HOST__|${REGISTRY_HOST}|g" \
               -e "s|__IMAGE_TAG__|${IMAGE_TAG}|g" \
-              manifests/deployment.yaml | sudo kubectl apply -f -
-          sudo kubectl apply -f manifests/service.yaml
-          sudo kubectl rollout status deployment/sensor-api --timeout=120s
+              manifests/deployment.yaml | sudo kubectl apply -f - -n sensor-api
+          sudo kubectl apply -f manifests/service.yaml -n sensor-api
+          sudo kubectl rollout status deployment/sensor-api -n sensor-api --timeout=120s
