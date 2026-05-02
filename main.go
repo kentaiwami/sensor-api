@@ -88,6 +88,7 @@ func main() {
 	http.HandleFunc("/temperature", authMiddleware(postReading("temperatures")))
 	http.HandleFunc("/humidity", authMiddleware(postReading("humidities")))
 	http.HandleFunc("/co2", authMiddleware(postReading("co2s")))
+	http.HandleFunc("/smell", authMiddleware(postReading("smells")))
 	log.Println("listening on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
