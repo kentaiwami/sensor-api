@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -18,6 +19,8 @@ type Reading struct {
 
 var db *sql.DB
 var apiKey string
+
+var tables = []string{"temperatures", "humidities", "co2s", "smells"}
 
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +61,19 @@ func postReading(table string) http.HandlerFunc {
 	}
 }
 
+func metricsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	for _, table := range tables {
+		var ts *float64
+		err := db.QueryRow("SELECT UNIX_TIMESTAMP(MAX(recorded_at)) FROM " + table).Scan(&ts)
+		if err != nil || ts == nil {
+			fmt.Fprintf(w, "sensor_last_received_timestamp{table=%q} 0\n", table)
+			continue
+		}
+		fmt.Fprintf(w, "sensor_last_received_timestamp{table=%q} %g\n", table, *ts)
+	}
+}
+
 func main() {
 	godotenv.Load()
 
@@ -85,6 +101,7 @@ func main() {
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+	http.HandleFunc("/metrics", metricsHandler)
 	http.HandleFunc("/temperature", authMiddleware(postReading("temperatures")))
 	http.HandleFunc("/humidity", authMiddleware(postReading("humidities")))
 	http.HandleFunc("/co2", authMiddleware(postReading("co2s")))
