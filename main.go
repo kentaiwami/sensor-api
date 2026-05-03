@@ -20,7 +20,7 @@ type Reading struct {
 var db *sql.DB
 var apiKey string
 
-var tables = []string{"temperatures", "humidities", "co2s", "smells"}
+var tables = []string{"temperatures", "humidities"}
 
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
