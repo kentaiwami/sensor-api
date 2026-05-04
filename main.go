@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
@@ -113,6 +117,23 @@ func main() {
 	http.HandleFunc("/humidity", authMiddleware(postReading("humidities")))
 	http.HandleFunc("/co2", authMiddleware(postReading("co2s")))
 	http.HandleFunc("/smell", authMiddleware(postReading("smells")))
-	log.Println("listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+
+	srv := &http.Server{Addr: ":8080"}
+	go func() {
+		log.Println("listening on :8080")
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	<-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("server shutdown")
 }
