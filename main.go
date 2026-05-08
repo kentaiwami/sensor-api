@@ -24,7 +24,7 @@ type Reading struct {
 var db *sql.DB
 var apiKey string
 
-var tables = []string{"temperatures", "humidities"}
+var tables = []string{"temperatures", "humidities", "co2s"}
 
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -75,6 +75,19 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		fmt.Fprintf(w, "sensor_last_received_timestamp{table=%q} %g\n", table, *ts)
+	}
+
+	// latest co2 value per sensor
+	rows, err := db.Query("SELECT sensor_id, value FROM co2s WHERE recorded_at = (SELECT MAX(recorded_at) FROM co2s c2 WHERE c2.sensor_id = co2s.sensor_id)")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var sensorID string
+			var value float64
+			if err := rows.Scan(&sensorID, &value); err == nil {
+				fmt.Fprintf(w, "sensor_co2{sensor_id=%q} %g\n", sensorID, value)
+			}
+		}
 	}
 }
 
