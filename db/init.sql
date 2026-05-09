@@ -25,3 +25,8 @@ CREATE TABLE IF NOT EXISTS smells (
     value       DECIMAL(5,4) NOT NULL,
     recorded_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS smell_notifications (
+    sensor_id   VARCHAR(64)  NOT NULL PRIMARY KEY,
+    notified_at DATETIME     NOT NULL
+);
