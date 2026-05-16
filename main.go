@@ -65,6 +65,38 @@ func postReading(table string) http.HandlerFunc {
 	}
 }
 
+type BleReading struct {
+	Location string `json:"location"`
+	RSSI     *int   `json:"rssi"`
+}
+
+func postBleRssi(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var data BleReading
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if data.RSSI == nil {
+		http.Error(w, "rssi is required", http.StatusBadRequest)
+		return
+	}
+	if data.Location == "" {
+		http.Error(w, "location is required", http.StatusBadRequest)
+		return
+	}
+	_, err := db.Exec("INSERT INTO ble_rssi (location, rssi) VALUES (?, ?)", data.Location, data.RSSI)
+	if err != nil {
+		log.Printf("db insert error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+}
+
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	for _, table := range tables {
@@ -143,6 +175,7 @@ func main() {
 	http.HandleFunc("/humidity", authMiddleware(postReading("humidities")))
 	http.HandleFunc("/co2", authMiddleware(postReading("co2s")))
 	http.HandleFunc("/smell", authMiddleware(postReading("smells")))
+	http.HandleFunc("/ble/rssi", authMiddleware(postBleRssi))
 
 	srv := &http.Server{Addr: ":8080"}
 	go func() {
