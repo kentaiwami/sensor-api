@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -23,6 +27,7 @@ type Reading struct {
 
 var db *sql.DB
 var apiKey string
+var slackSigningSecret string
 
 var tables = []string{"temperatures", "humidities", "co2s", "smells"}
 
@@ -97,6 +102,68 @@ func postBleRssi(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
+func slackEventsHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	// 署名検証
+	ts := r.Header.Get("X-Slack-Request-Timestamp")
+	sig := r.Header.Get("X-Slack-Signature")
+	mac := hmac.New(sha256.New, []byte(slackSigningSecret))
+	fmt.Fprintf(mac, "v0:%s:%s", ts, body)
+	expected := "v0=" + hex.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(expected), []byte(sig)) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var payload struct {
+		Type      string `json:"type"`
+		Challenge string `json:"challenge"`
+		Event     struct {
+			Type     string `json:"type"`
+			Reaction string `json:"reaction"`
+			Item     struct {
+				Type string `json:"type"`
+				TS   string `json:"ts"`
+			} `json:"item"`
+		} `json:"event"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	// URL verification
+	if payload.Type == "url_verification" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"challenge": payload.Challenge})
+		return
+	}
+
+	if payload.Event.Type == "reaction_added" && payload.Event.Item.Type == "message" {
+		var result string
+		switch payload.Event.Reaction {
+		case "white_check_mark":
+			result = "confirmed"
+		case "x":
+			result = "false_positive"
+		default:
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		db.Exec(
+			"UPDATE smell_notifications SET result=? WHERE slack_ts=?",
+			result, payload.Event.Item.TS,
+		)
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	for _, table := range tables {
@@ -160,6 +227,11 @@ func main() {
 		log.Fatal("API_KEY is required")
 	}
 
+	slackSigningSecret = os.Getenv("SLACK_SIGNING_SECRET")
+	if slackSigningSecret == "" {
+		log.Fatal("SLACK_SIGNING_SECRET is required")
+	}
+
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -176,6 +248,7 @@ func main() {
 	http.HandleFunc("/co2", authMiddleware(postReading("co2s")))
 	http.HandleFunc("/smell", authMiddleware(postReading("smells")))
 	http.HandleFunc("/ble/rssi", authMiddleware(postBleRssi))
+	http.HandleFunc("/slack/events", slackEventsHandler)
 
 	srv := &http.Server{Addr: ":8080"}
 	go func() {

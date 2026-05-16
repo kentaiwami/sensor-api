@@ -48,3 +48,8 @@ spec:
                 secretKeyRef:
                   name: sensor-api-secret
                   key: api-key
+            - name: SLACK_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: sensor-api-secret
+                  key: slack-signing-secret
