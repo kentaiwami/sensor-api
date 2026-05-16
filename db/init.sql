@@ -40,3 +40,9 @@ CREATE TABLE IF NOT EXISTS ble_rssi (
     rssi        INT          NOT NULL,
     recorded_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS presence_logs (
+    id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    location    VARCHAR(50)  NOT NULL,
+    recorded_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
