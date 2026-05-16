@@ -27,7 +27,10 @@ CREATE TABLE IF NOT EXISTS smells (
 );
 
 CREATE TABLE IF NOT EXISTS smell_notifications (
-    sensor_id   VARCHAR(64)  NOT NULL PRIMARY KEY,
+    id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    sensor_id   VARCHAR(64)  NOT NULL,
+    slack_ts    VARCHAR(32)  NULL,
+    result      ENUM('unknown','confirmed','false_positive') NOT NULL DEFAULT 'unknown',
     notified_at DATETIME     NOT NULL
 );
 
